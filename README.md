@@ -1,7 +1,7 @@
 # 🛍️ ShopEase Pro — Enterprise E-Commerce Platform & FinTech Shopping Suite
 
 <p align="center">
-  <img src="https://images.unsplash.com/photo-1557821552-17105176677c?w=1200&auto=format&fit=crop&q=80" alt="ShopEase Pro Banner" width="100%" style="border-radius: 16px; max-height: 380px; object-fit: cover;" />
+  <img src="assets/banner.jpg" alt="ShopEase Pro — Next-Gen FinTech & E-Commerce Platform" width="100%" style="border-radius: 20px; box-shadow: 0 20px 50px -10px rgba(99, 102, 241, 0.4); max-height: 460px; object-fit: cover;" />
 </p>
 
 <p align="center">
