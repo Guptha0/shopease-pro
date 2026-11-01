@@ -127,4 +127,44 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
+// @route   PUT /api/auth/profile
+// @desc    Update user profile, addresses, saved cards
+// @access  Protected
+router.put('/profile', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (req.body.name) user.name = req.body.name;
+    if (req.body.phone) user.phone = req.body.phone;
+    if (req.body.savedAddresses) user.savedAddresses = req.body.savedAddresses;
+    if (req.body.savedCards) user.savedCards = req.body.savedCards;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        savedAddresses: user.savedAddresses,
+        savedCards: user.savedCards,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Server error updating profile',
+    });
+  }
+});
+
 module.exports = router;

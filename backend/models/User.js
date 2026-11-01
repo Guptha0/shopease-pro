@@ -41,7 +41,16 @@ const userSchema = new mongoose.Schema(
         ref: 'Product',
       },
     ],
+    phone: { type: String, default: '+91 91234 56789' },
     savedAddresses: [addressSchema],
+    savedCards: [
+      {
+        cardNumber: { type: String },
+        cardHolder: { type: String },
+        expiry: { type: String },
+        cardType: { type: String, default: 'Visa' },
+      },
+    ],
   },
   {
     timestamps: true,

@@ -1,6 +1,9 @@
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Wallet = require('../models/Wallet');
+const Return = require('../models/Return');
+const Ticket = require('../models/Ticket');
 
 // Helper to generate 30 days of historical price points
 const generate30DayPriceHistory = (currentPrice, minPrice, maxPrice) => {
@@ -334,18 +337,49 @@ const initialProducts = [
     numReviews: 92,
     badges: ['Lowest Price in 30 Days', 'Prime Same-Day'],
   },
+  {
+    name: 'Lenovo LOQ 15.6" FHD 144Hz Gaming Laptop (Core i5 13th Gen / RTX 4050 6GB)',
+    brand: 'Lenovo',
+    category: 'Laptops & Gaming',
+    description: 'Intel Core i5-13450HX 10-core CPU, NVIDIA GeForce RTX 4050 6GB GDDR6 (95W TGP), 16GB DDR5 4800MHz RAM, 512GB NVMe SSD, and 100% sRGB 144Hz G-Sync display.',
+    mrp: 86990,
+    price: 67990,
+    stock: 24,
+    imageUrl: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800&auto=format&fit=crop&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=800&auto=format&fit=crop&q=80'
+    ],
+    specs: {
+      'Processor': 'Intel Core i5-13450HX (10 Cores, Up to 4.6GHz)',
+      'GPU': 'NVIDIA GeForce RTX 4050 6GB GDDR6 (95W TGP)',
+      'Display': '15.6" FHD IPS 144Hz 100% sRGB G-Sync',
+      'RAM / SSD': '16GB DDR5-4800 / 512GB M.2 Gen4 NVMe',
+      'Battery': '60Wh with Rapid Charge Pro (50% in 30m)',
+      'Warranty': '1 Year Onsite + 1 Year Premium Care',
+      'Value Score': '98/100'
+    },
+    priceHistory: generate30DayPriceHistory(67990, 67990, 86990),
+    isFlashDeal: true,
+    rating: 4.8,
+    numReviews: 148,
+    badges: ['Lowest Price in 30 Days', 'Best Gaming Laptop under ₹70k', 'Prime Same-Day'],
+  },
 ];
 
 const seedDatabaseIfEmpty = async (forceClear = false) => {
   const count = await Product.countDocuments();
-  if (!forceClear && count >= 12) {
+  if (!forceClear && count >= 13) {
     return;
   }
 
-  if (forceClear || count < 12) {
+  if (forceClear || count < 13) {
     await Order.deleteMany({});
     await Product.deleteMany({});
     await User.deleteMany({});
+    await Wallet.deleteMany({});
+    await Return.deleteMany({});
+    await Ticket.deleteMany({});
   }
 
   // Create Demo Admin
@@ -367,6 +401,23 @@ const seedDatabaseIfEmpty = async (forceClear = false) => {
     ],
   });
 
+  // Seed Admin Wallet
+  await Wallet.create({
+    user: admin._id,
+    balance: 25000,
+    rewardsCoins: 1200,
+    transactions: [
+      {
+        id: 'TXN-ADM-01',
+        type: 'CREDIT',
+        amount: 25000,
+        description: 'Admin Merchant Operating Float',
+        referenceId: 'ADM-FLOAT-INIT',
+        createdAt: new Date(Date.now() - 86400000 * 5),
+      },
+    ],
+  });
+
   // Create Demo Customer
   const customer = await User.create({
     name: 'Rohan Sharma',
@@ -382,6 +433,31 @@ const seedDatabaseIfEmpty = async (forceClear = false) => {
         postalCode: '560060',
         phone: '+91 91234 56789',
         isDefault: true,
+      },
+    ],
+  });
+
+  // Seed Customer Demo Wallet (₹1,500 balance + 120 reward coins for instant evaluator testing)
+  await Wallet.create({
+    user: customer._id,
+    balance: 1500,
+    rewardsCoins: 120,
+    transactions: [
+      {
+        id: 'TXN-INIT-01',
+        type: 'CREDIT',
+        amount: 1500,
+        description: 'Demo Pre-Loaded Float for Instant Checkout',
+        referenceId: 'DEMO-FLOAT-1500',
+        createdAt: new Date(Date.now() - 86400000 * 3),
+      },
+      {
+        id: 'TXN-INIT-02',
+        type: 'CREDIT',
+        amount: 120,
+        description: 'Loyalty Reward Coins from Previous Orders',
+        referenceId: 'REWARD-COINS-120',
+        createdAt: new Date(Date.now() - 86400000 * 2),
       },
     ],
   });
@@ -491,7 +567,7 @@ const seedDatabaseIfEmpty = async (forceClear = false) => {
   });
 
   // Order 3: Delivered
-  await Order.create({
+  const deliveredOrder = await Order.create({
     user: customer._id,
     items: [
       {
@@ -550,7 +626,58 @@ const seedDatabaseIfEmpty = async (forceClear = false) => {
     ],
   });
 
-  console.log('[ShopEase Pro Seed] Loaded 12 premium products, 2 demo accounts, and 3 granular tracked orders.');
+  // Pre-populate 1 Sample Return on Delivered Order for Evaluator Testing
+  await Return.create({
+    returnId: 'RET-481902',
+    order: deliveredOrder._id,
+    orderTracking: deliveredOrder.trackingNumber,
+    user: customer._id,
+    userName: customer.name,
+    userEmail: customer.email,
+    items: deliveredOrder.items,
+    reason: 'Damaged packaging during transit',
+    resolution: 'Instant Wallet Refund',
+    imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&q=80',
+    refundAmount: deliveredOrder.totalAmount,
+    pickupDate: new Date(now.getTime() + 86400000),
+    pickupAddress: customer.savedAddresses[0],
+    status: 'Return Requested',
+    timeline: [
+      {
+        status: 'Return Requested',
+        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 3),
+        description: 'Customer requested instant wallet refund for damaged outer packaging.',
+      },
+      {
+        status: 'Pickup Scheduled',
+        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 1),
+        description: 'BlueDart doorstep reverse pickup scheduled for doorstep retrieval.',
+      },
+    ],
+  });
+
+  // Pre-populate 1 Active Support Ticket in Admin Help Desk
+  await Ticket.create({
+    ticketId: 'TCK-892144',
+    user: customer._id,
+    userName: customer.name,
+    userEmail: customer.email,
+    subject: 'Delivery timing slot request for BlueDart express shipment',
+    category: 'Delivery Delayed',
+    priority: 'Medium',
+    status: 'Open',
+    orderId: 'TRK-BD8921KA',
+    messages: [
+      {
+        sender: 'user',
+        senderName: 'Rohan Sharma',
+        text: 'Hi Team, could you please confirm the expected delivery slot for order #TRK-BD8921KA? Is BlueDart Prime available for afternoon drop?',
+        timestamp: new Date(now.getTime() - 1000 * 60 * 60 * 2),
+      },
+    ],
+  });
+
+  console.log('[ShopEase Pro Seed] Loaded 12 products, 2 demo accounts, 3 tracked orders, 1 sample return, and 1 support ticket.');
 };
 
 module.exports = { seedDatabaseIfEmpty, initialProducts };

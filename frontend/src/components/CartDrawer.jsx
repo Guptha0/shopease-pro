@@ -1,5 +1,6 @@
 import React from 'react';
 import { useCart } from '../context/CartContext';
+import { useCurrency } from '../context/CurrencyContext';
 import {
   X,
   Plus,
@@ -13,25 +14,31 @@ import {
 
 const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
   const {
-    cartItems,
-    totalItemsCount,
-    subtotal,
-    shipping,
-    tax,
-    grandTotal,
+    cartItems = [],
+    totalItemsCount = 0,
+    totalPrice = 0,
+    deliveryCharge = 0,
+    couponDiscount = 0,
+    grandTotal = 0,
     updateQuantity,
     removeFromCart,
     clearCart,
   } = useCart();
 
+  const { formatPrice } = useCurrency();
+
   if (!isOpen) return null;
 
-  const freeShippingThreshold = 100;
+  const subtotal = Number(totalPrice) || 0;
+  const shipping = Number(deliveryCharge) || 0;
+  const tax = Math.round(subtotal * 0.08);
+  const finalTotal = Number(grandTotal) || (subtotal + shipping + tax - (Number(couponDiscount) || 0));
+
+  const freeShippingThreshold = 1000;
   const amountToFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
-  const freeShippingProgress = Math.min(
-    100,
-    (subtotal / freeShippingThreshold) * 100
-  );
+  const freeShippingProgress = freeShippingThreshold > 0
+    ? Math.min(100, (subtotal / freeShippingThreshold) * 100)
+    : 100;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-fadeIn">
@@ -72,7 +79,7 @@ const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
                 <Truck className="w-3.5 h-3.5 text-indigo-400" />
                 {amountToFreeShipping > 0 ? (
                   <span>
-                    Add <strong className="text-indigo-300">${amountToFreeShipping.toFixed(2)}</strong> for Free Shipping
+                    Add <strong className="text-indigo-300">{formatPrice(amountToFreeShipping)}</strong> for Free Shipping
                   </span>
                 ) : (
                   <span className="text-emerald-400 font-semibold flex items-center gap-1">
@@ -81,7 +88,7 @@ const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
                 )}
               </span>
               <span className="text-slate-400 font-mono text-[11px]">
-                {freeShippingProgress.toFixed(0)}%
+                {Math.round(freeShippingProgress)}%
               </span>
             </div>
             <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -99,33 +106,23 @@ const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-500">
                   <ShoppingBag className="w-8 h-8" />
                 </div>
-                <h3 className="text-base font-semibold text-white mb-1">
-                  Your cart is empty
-                </h3>
-                <p className="text-xs text-slate-400 mb-6">
-                  Explore our curated products and add items to your cart.
+                <h3 className="text-base font-semibold text-white">Your cart is empty</h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                  Explore our catalog and find the best electronics, fashion, and lifestyle items.
                 </p>
-                <button
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all"
-                >
-                  Start Shopping
-                </button>
               </div>
             ) : (
               cartItems.map((item) => (
                 <div
                   key={item.product}
-                  className="flex gap-4 p-3.5 rounded-xl bg-slate-800/40 border border-slate-800/80 hover:border-slate-700/80 transition-all"
+                  className="flex gap-4 p-4 rounded-2xl bg-slate-800/40 border border-slate-800 hover:border-slate-700 transition-all"
                 >
-                  {/* Thumbnail */}
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="w-18 h-18 rounded-lg object-cover bg-slate-950 shrink-0"
+                    className="w-20 h-20 rounded-xl object-cover bg-slate-950 shrink-0"
                   />
 
-                  {/* Details */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
                       <div className="flex items-start justify-between gap-2">
@@ -141,7 +138,7 @@ const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
                         </button>
                       </div>
                       <p className="text-[11px] text-indigo-400 font-medium">
-                        ${item.price.toFixed(2)} each
+                        {formatPrice(item.price || 0)} each
                       </p>
                     </div>
 
@@ -171,7 +168,7 @@ const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
                       </div>
 
                       <span className="text-xs font-extrabold text-white">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        {formatPrice((Number(item.price) || 0) * (Number(item.quantity) || 1))}
                       </span>
                     </div>
                   </div>
@@ -187,7 +184,7 @@ const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal</span>
                   <span className="font-semibold text-slate-200">
-                    ${subtotal.toFixed(2)}
+                    {formatPrice(subtotal)}
                   </span>
                 </div>
 
@@ -197,7 +194,7 @@ const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
                     {shipping === 0 ? (
                       <span className="text-emerald-400 font-bold">FREE</span>
                     ) : (
-                      `$${shipping.toFixed(2)}`
+                      formatPrice(shipping)
                     )}
                   </span>
                 </div>
@@ -205,14 +202,14 @@ const CartDrawer = ({ isOpen, onClose, onProceedToCheckout }) => {
                 <div className="flex justify-between text-slate-400">
                   <span>Estimated Tax (8%)</span>
                   <span className="font-semibold text-slate-200">
-                    ${tax.toFixed(2)}
+                    {formatPrice(tax)}
                   </span>
                 </div>
 
                 <div className="pt-2 border-t border-slate-800 flex justify-between text-sm">
                   <span className="font-bold text-white">Total</span>
                   <span className="font-black text-indigo-300 text-base">
-                    ${grandTotal.toFixed(2)}
+                    {formatPrice(finalTotal)}
                   </span>
                 </div>
               </div>

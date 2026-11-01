@@ -50,6 +50,7 @@ const CategoryTabs = ({ selectedCategory, onSelectCategory }) => {
       special: true,
       badge: 'Lowest 30D',
     },
+    { id: 'account', label: 'My Account Hub', icon: Package, isNav: true },
     { id: 'orders', label: 'Track Orders', icon: Package, isNav: true },
     ...(isAdmin
       ? [{ id: 'admin', label: 'Admin Seller Central', icon: ShieldCheck, isNav: true, admin: true }]

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const { connectDB } = require('./config/db');
 const { seedDatabaseIfEmpty } = require('./utils/seederHelper');
 
@@ -31,12 +32,17 @@ connectDB()
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/wallet', require('./routes/walletRoutes'));
+app.use('/api/returns', require('./routes/returnRoutes'));
+app.use('/api/tickets', require('./routes/ticketRoutes'));
+app.use('/api/enterprise', require('./routes/enterpriseRoutes'));
 
 // Root / Health endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     app: 'ShopSphere API',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'connecting',
     timestamp: new Date().toISOString(),
   });
 });

@@ -1,0 +1,15 @@
+{
+  "name": "shopease-pro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ShopEase Pro Next-Gen E-Commerce Platform & SmartSense Shopping Suite",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend start",
+    "start": "npm --prefix backend start",
+    "build": "npm --prefix frontend run build",
+    "seed": "npm --prefix backend run seed"
+  }
+}
+

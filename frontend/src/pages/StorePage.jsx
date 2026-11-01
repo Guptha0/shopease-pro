@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/apiClient';
+import { useCurrency } from '../context/CurrencyContext';
 import HeroBanner from '../components/HeroBanner';
 import ProductCard from '../components/ProductCard';
 import ProductDetailModal from '../components/ProductDetailModal';
@@ -26,7 +27,10 @@ const StorePage = ({
   setSearchTerm,
   selectedCategory = 'All',
   setSelectedCategory,
+  onOpenSquadBuy,
+  onOpenEmiCalculator,
 }) => {
+  const { formatPrice } = useCurrency();
   const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -436,6 +440,8 @@ const StorePage = ({
                   onOpenPriceHistory={setHistoryProduct}
                   onOpenPriceLock={setLockProduct}
                   onOpenNegotiator={setNegotiateProduct}
+                  onOpenSquadBuy={onOpenSquadBuy}
+                  onOpenEmiCalculator={onOpenEmiCalculator}
                 />
               ))}
             </div>
@@ -459,6 +465,14 @@ const StorePage = ({
           onOpenNegotiator={(p) => {
             setDetailProduct(null);
             setNegotiateProduct(p);
+          }}
+          onOpenSquadBuy={(p) => {
+            setDetailProduct(null);
+            if (onOpenSquadBuy) onOpenSquadBuy(p);
+          }}
+          onOpenEmiCalculator={(p) => {
+            setDetailProduct(null);
+            if (onOpenEmiCalculator) onOpenEmiCalculator(p);
           }}
         />
       )}

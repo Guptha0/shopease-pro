@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { WalletProvider } from './context/WalletContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import apiClient from './api/apiClient';
 
 // Layout Components
@@ -10,6 +13,7 @@ import CartDrawer from './components/CartDrawer';
 import Toast from './components/Toast';
 import Footer from './components/Footer';
 import CompareDrawer from './components/CompareDrawer';
+import NotificationToastBanner from './components/NotificationToastBanner';
 
 // Global Modals
 import PincodeModal from './components/PincodeModal';
@@ -26,6 +30,15 @@ import OrdersPage from './pages/OrdersPage';
 import AdminSellerCentral from './pages/AdminSellerCentral';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
+import WalletPage from './pages/WalletPage';
+import NotificationsPage from './pages/NotificationsPage';
+import AccountPage from './pages/AccountPage';
+import ShopBotModal from './components/ShopBotModal';
+import ScratchCardModal from './components/ScratchCardModal';
+import VisualSearchModal from './components/VisualSearchModal';
+import SquadBuyModal from './components/SquadBuyModal';
+import GiftCardModal from './components/GiftCardModal';
+import EmiCalculatorModal from './components/EmiCalculatorModal';
 
 function AppContent() {
   const { user, isAdmin } = useAuth();
@@ -40,6 +53,13 @@ function AppContent() {
   const [isPincodeOpen, setIsPincodeOpen] = useState(false);
   const [invoiceOrder, setInvoiceOrder] = useState(null);
   const [catalogProducts, setCatalogProducts] = useState([]);
+  
+  // Enterprise Modal States
+  const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
+  const [isGiftCardOpen, setIsGiftCardOpen] = useState(false);
+  const [scratchCardOrder, setScratchCardOrder] = useState(null);
+  const [squadBuyProduct, setSquadBuyProduct] = useState(null);
+  const [emiProduct, setEmiProduct] = useState(null);
 
   // Direct modal triggers from navbar or cart
   const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
@@ -92,6 +112,11 @@ function AppContent() {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           onOpenPincodeModal={() => setIsPincodeOpen(true)}
+          onOpenVisualSearch={() => setIsVisualSearchOpen(true)}
+          onOpenGiftCards={() => setIsGiftCardOpen(true)}
+          onOpenSquadBuy={() => {
+            if (catalogProducts.length > 0) setSquadBuyProduct(catalogProducts[0]);
+          }}
           products={catalogProducts}
           onSelectProduct={(product) => {
             setSelectedProductForDetail(product);
@@ -114,6 +139,8 @@ function AppContent() {
               setSearchTerm={setSearchTerm}
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
+              onOpenSquadBuy={(p) => setSquadBuyProduct(p)}
+              onOpenEmiCalculator={(p) => setEmiProduct(p)}
             />
           )}
 
@@ -157,9 +184,30 @@ function AppContent() {
             <CheckoutPage
               onOrderPlaced={(order) => {
                 setInvoiceOrder(order);
+                setScratchCardOrder(order);
                 navigateTo('orders');
               }}
               onNavigateToAuth={() => navigateTo('auth')}
+            />
+          )}
+
+          {currentView === 'wallet' && (
+            <WalletPage onExploreStore={() => navigateTo('store')} />
+          )}
+
+          {currentView === 'account' && (
+            <AccountPage
+              onExploreStore={() => navigateTo('store')}
+              onViewInvoice={(order) => setInvoiceOrder(order)}
+              onTrackOrder={() => navigateTo('orders')}
+            />
+          )}
+
+          {currentView === 'notifications' && (
+            <NotificationsPage
+              onNavigateToOrders={() => navigateTo('orders')}
+              onNavigateToWallet={() => navigateTo('wallet')}
+              onExploreStore={() => navigateTo('store')}
             />
           )}
 
@@ -219,6 +267,14 @@ function AppContent() {
             setSelectedProductForDetail(null);
             setNegotiateProduct(p);
           }}
+          onOpenSquadBuy={(p) => {
+            setSelectedProductForDetail(null);
+            setSquadBuyProduct(p);
+          }}
+          onOpenEmiCalculator={(p) => {
+            setSelectedProductForDetail(null);
+            setEmiProduct(p);
+          }}
         />
       )}
 
@@ -244,7 +300,56 @@ function AppContent() {
         />
       )}
 
+      {/* Live Order SMS & WhatsApp Notification Simulator Banner */}
+      <NotificationToastBanner
+        onNavigateToOrders={() => navigateTo('orders')}
+        onNavigateToWallet={() => navigateTo('wallet')}
+      />
+
       {/* Floating System Notifications */}
+      <ShopBotModal
+        onNavigate={navigateTo}
+        onSelectProduct={(p) => setSelectedProductForDetail(p)}
+      />
+            {/* AI Visual Snap & Search Modal */}
+      <VisualSearchModal
+        isOpen={isVisualSearchOpen}
+        onClose={() => setIsVisualSearchOpen(false)}
+        onSelectProduct={(p) => setSelectedProductForDetail(p)}
+      />
+
+      {/* Post-Checkout Mystery Scratch Card Modal */}
+      <ScratchCardModal
+        isOpen={Boolean(scratchCardOrder)}
+        orderNumber={scratchCardOrder?.trackingNumber || 'ORD-RECENT'}
+        onClose={() => setScratchCardOrder(null)}
+      />
+
+      {/* Pinduoduo-Style Squad Buy 15% Group Discount Modal */}
+      <SquadBuyModal
+        isOpen={Boolean(squadBuyProduct)}
+        product={squadBuyProduct}
+        onClose={() => setSquadBuyProduct(null)}
+        onProceedCheckout={() => navigateTo('checkout')}
+      />
+
+      {/* Digital Gift Cards Modal */}
+      <GiftCardModal
+        isOpen={isGiftCardOpen}
+        onClose={() => setIsGiftCardOpen(false)}
+      />
+
+      {/* 0% No-Cost EMI Calculator Modal */}
+      <EmiCalculatorModal
+        isOpen={Boolean(emiProduct)}
+        product={emiProduct}
+        onClose={() => setEmiProduct(null)}
+        onSelectEmiPlan={(plan, bank) => {
+          setEmiProduct(null);
+          navigateTo('checkout');
+        }}
+      />
+
       <Toast />
 
       {/* Global Footer */}
@@ -256,9 +361,15 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <AppContent />
-      </CartProvider>
+      <NotificationProvider>
+        <CurrencyProvider>
+        <WalletProvider>
+          <CartProvider>
+            <AppContent />
+          </CartProvider>
+        </WalletProvider>
+      </CurrencyProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

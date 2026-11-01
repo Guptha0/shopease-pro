@@ -8,7 +8,13 @@
     "dev": "nodemon server.js",
     "seed": "node seed.js"
   },
-  "keywords": ["ecommerce", "express", "mongodb", "mongoose", "jwt"],
+  "keywords": [
+    "ecommerce",
+    "express",
+    "mongodb",
+    "mongoose",
+    "jwt"
+  ],
   "author": "ShopSphere Team",
   "license": "ISC",
   "dependencies": {
@@ -17,7 +23,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.5"
+    "mongoose": "^8.9.5",
+    "puppeteer-core": "^25.16.0"
   },
   "devDependencies": {
     "mongodb-memory-server": "^10.1.3",

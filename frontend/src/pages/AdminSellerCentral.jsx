@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import {
   ShieldCheck,
   Package,
@@ -18,12 +19,25 @@ import {
   Flame,
   Tag,
   TrendingUp,
+  RotateCcw,
+  LifeBuoy,
+  MessageSquare,
+  Clock,
+  ExternalLink,
+  Image,
+  Send,
+  Check,
+  Radio,
+  Sparkles,
+  BellRing,
+  Phone,
 } from 'lucide-react';
 
 const AdminSellerCentral = () => {
   const { isAdmin } = useAuth();
+  const { triggerNotification } = useNotifications();
 
-  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'orders' | 'deals'
+  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'orders' | 'returns' | 'tickets' | 'deals'
 
   // KPI Stats
   const [stats, setStats] = useState({
@@ -42,6 +56,62 @@ const AdminSellerCentral = () => {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+
+  // Returns & Refunds
+  const [returns, setReturns] = useState([]);
+  const [returnsLoading, setReturnsLoading] = useState(true);
+  const [processingReturnId, setProcessingReturnId] = useState(null);
+
+  // Support Tickets
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketReplies, setTicketReplies] = useState({});
+  const [resolvingTicketId, setResolvingTicketId] = useState(null);
+
+  // Abandoned Carts Radar
+  const [abandonedCarts, setAbandonedCarts] = useState([
+    {
+      id: 'ABN-1092',
+      customerName: 'Kavita Nair',
+      email: 'kavita.n@gmail.com',
+      phone: '+91 98450 12345',
+      abandonedItem: 'Apple iPhone 16 Pro Max 256GB',
+      cartValue: 134900,
+      timeAgo: '42 mins ago',
+      nudgeSent: false,
+    },
+    {
+      id: 'ABN-1093',
+      customerName: 'Vikram Sethi',
+      email: 'vikram.s@outlook.com',
+      phone: '+91 99801 54321',
+      abandonedItem: 'Sony WH-1000XM5 Wireless Headphones',
+      cartValue: 26990,
+      timeAgo: '1 hr 15 mins ago',
+      nudgeSent: true,
+    },
+    {
+      id: 'ABN-1094',
+      customerName: 'Ananya Sharma',
+      email: 'ananya.s@techcorp.in',
+      phone: '+91 98765 43210',
+      abandonedItem: 'Keychron Q1 Pro Mechanical Keyboard',
+      cartValue: 16499,
+      timeAgo: '2 hrs ago',
+      nudgeSent: false,
+    },
+    {
+      id: 'ABN-1095',
+      customerName: 'Siddharth Rao',
+      email: 'sid.rao@startup.io',
+      phone: '+91 97412 88990',
+      abandonedItem: 'LG UltraGear 34" Curved Gaming Monitor',
+      cartValue: 54990,
+      timeAgo: '3 hrs ago',
+      nudgeSent: false,
+    },
+  ]);
+  const [sendingNudgeId, setSendingNudgeId] = useState(null);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -102,13 +172,170 @@ const AdminSellerCentral = () => {
     }
   };
 
+  const fetchReturns = async () => {
+    setReturnsLoading(true);
+    try {
+      const res = await apiClient.get('/returns');
+      if (res.data?.success) setReturns(res.data.returns || []);
+    } catch (err) {
+      console.warn('Failed returns fetch:', err.message);
+    } finally {
+      setReturnsLoading(false);
+    }
+  };
+
+  const fetchTickets = async () => {
+    setTicketsLoading(true);
+    try {
+      const res = await apiClient.get('/tickets');
+      if (res.data?.success) setTickets(res.data.tickets || []);
+    } catch (err) {
+      console.warn('Failed tickets fetch:', err.message);
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
+
+  const fetchAbandonedCarts = async () => {
+    try {
+      const res = await apiClient.get('/enterprise/abandoned-carts');
+      if (res.data?.success && res.data.abandonedCarts?.length) {
+        setAbandonedCarts(res.data.abandonedCarts);
+      }
+    } catch (err) {
+      console.warn('Abandoned carts fetch:', err.message);
+    }
+  };
+
   useEffect(() => {
     if (isAdmin) {
       fetchStats();
       fetchProducts();
       fetchOrders();
+      fetchReturns();
+      fetchTickets();
+      fetchAbandonedCarts();
     }
   }, [isAdmin]);
+
+  // Send Abandoned Cart Recovery Nudge
+  const handleSendNudge = async (cart) => {
+    setSendingNudgeId(cart.id);
+    try {
+      await apiClient.post('/enterprise/abandoned-carts/nudge', { cartId: cart.id });
+      setAbandonedCarts((prev) =>
+        prev.map((c) => (c.id === cart.id ? { ...c, nudgeSent: true } : c))
+      );
+      showNotice(`Automated WhatsApp & SMS recovery nudge dispatched to ${cart.customerName}!`);
+
+      triggerNotification({
+        channel: 'WHATSAPP',
+        type: 'order',
+        title: `Recovery Nudge to ${cart.customerName}`,
+        message: `📱 WhatsApp Alert: "Hey ${cart.customerName.split(' ')[0]}, your ${cart.abandonedItem} is waiting in your cart! Complete purchase now with coupon RECOVER5 for extra 5% off: shopease.pro/checkout"`,
+        orderId: cart.id,
+      });
+    } catch (err) {
+      showNotice(err.message || 'Failed to dispatch recovery nudge', true);
+    } finally {
+      setSendingNudgeId(null);
+    }
+  };
+
+  // Approve Refund & Auto-Credit Virtual Wallet
+  const handleApproveRefund = async (returnId) => {
+    setProcessingReturnId(returnId);
+    try {
+      const res = await apiClient.patch('/returns/' + returnId + '/approve');
+      if (res.data?.success) {
+        const updatedReturn = res.data.returnRequest;
+        setReturns((prev) =>
+          prev.map((r) => (r._id === returnId || r.returnId === returnId ? updatedReturn : r))
+        );
+        showNotice('Refund of ₹' + updatedReturn.refundAmount?.toLocaleString('en-IN') + ' approved and auto-credited to customer wallet!');
+
+        triggerNotification({
+          channel: 'SMS',
+          type: 'wallet',
+          title: 'Refund Credited to Virtual Wallet',
+          message: 'ShopEase Pro: Instant Wallet Refund of ₹' + updatedReturn.refundAmount?.toLocaleString('en-IN') + ' for return #' + updatedReturn.returnId + ' credited successfully! Check balance in wallet passbook.',
+          orderId: updatedReturn.returnId,
+        });
+      }
+    } catch (err) {
+      showNotice(err.message || 'Failed to approve refund', true);
+    } finally {
+      setProcessingReturnId(null);
+    }
+  };
+
+  // Update Return Status
+  const handleUpdateReturnStatus = async (returnId, status) => {
+    try {
+      const res = await apiClient.patch('/returns/' + returnId + '/status', { status });
+      if (res.data?.success) {
+        const updatedReturn = res.data.returnRequest;
+        setReturns((prev) =>
+          prev.map((r) => (r._id === returnId || r.returnId === returnId ? updatedReturn : r))
+        );
+        showNotice('Return #' + returnId + ' transitioned to "' + status + '"');
+      }
+    } catch (err) {
+      showNotice(err.message || 'Status update failed', true);
+    }
+  };
+
+  // Resolve Ticket
+  const handleResolveTicket = async (ticketId) => {
+    setResolvingTicketId(ticketId);
+    try {
+      const res = await apiClient.patch('/tickets/' + ticketId + '/resolve', {
+        resolutionNote: 'Issue resolved by ShopEase Support Desk specialist.',
+      });
+      if (res.data?.success) {
+        const updatedTicket = res.data.ticket;
+        setTickets((prev) =>
+          prev.map((t) => (t._id === ticketId || t.ticketId === ticketId ? updatedTicket : t))
+        );
+        showNotice('Support Ticket #' + updatedTicket.ticketId + ' marked as Resolved!');
+
+        triggerNotification({
+          channel: 'SMS',
+          type: 'support',
+          title: 'Support Ticket #' + updatedTicket.ticketId + ' Resolved',
+          message: 'ShopEase Help Desk has marked ticket #' + updatedTicket.ticketId + ' as resolved. Thank you for shopping with us!',
+          orderId: updatedTicket.ticketId,
+        });
+      }
+    } catch (err) {
+      showNotice(err.message || 'Failed to resolve ticket', true);
+    } finally {
+      setResolvingTicketId(null);
+    }
+  };
+
+  // Send Reply to Ticket
+  const handleSendTicketReply = async (ticketId) => {
+    const replyText = ticketReplies[ticketId];
+    if (!replyText?.trim()) return;
+
+    try {
+      const res = await apiClient.post('/tickets/' + ticketId + '/messages', {
+        text: replyText,
+        sender: 'agent',
+      });
+      if (res.data?.success) {
+        const updatedTicket = res.data.ticket;
+        setTickets((prev) =>
+          prev.map((t) => (t._id === ticketId || t.ticketId === ticketId ? updatedTicket : t))
+        );
+        setTicketReplies((prev) => ({ ...prev, [ticketId]: '' }));
+        showNotice('Reply sent to customer on #' + updatedTicket.ticketId);
+      }
+    } catch (err) {
+      showNotice(err.message || 'Failed to send reply', true);
+    }
+  };
 
   // Status Change
   const handleStatusChange = async (orderId, newStatus) => {
@@ -380,6 +607,30 @@ const AdminSellerCentral = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('returns')}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 transition-all ${
+            activeTab === 'returns'
+              ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>Returns & Refunds ({returns.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('tickets')}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 transition-all ${
+            activeTab === 'tickets'
+              ? 'border-rose-500 text-rose-400 bg-rose-500/5'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <LifeBuoy className="w-4 h-4" />
+          <span>Support Desk ({tickets.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('deals')}
           className={`flex items-center gap-2 px-5 py-3 border-b-2 transition-all ${
             activeTab === 'deals'
@@ -389,6 +640,18 @@ const AdminSellerCentral = () => {
         >
           <Flame className="w-4 h-4" />
           <span>Flash Deals & Coupons</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('abandoned')}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 transition-all ${
+            activeTab === 'abandoned'
+              ? 'border-cyan-500 text-cyan-400 bg-cyan-500/5'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+          <span>Abandoned Cart Radar ({abandonedCarts.length})</span>
         </button>
       </div>
 
@@ -659,6 +922,116 @@ const AdminSellerCentral = () => {
               <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 text-amber-400">
                 Algorithm: ACTIVE
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: ABANDONED CART RADAR */}
+      {activeTab === 'abandoned' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Header & Metric Highlights */}
+          <div className="p-6 rounded-3xl glass-card border border-cyan-500/20 bg-gradient-to-r from-cyan-950/40 via-slate-900 to-indigo-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                </span>
+                <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                  Live Shopper Radar • Active Cart Monitoring
+                </span>
+              </div>
+              <h3 className="text-xl font-black text-white">
+                Abandoned Cart Recovery Center
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                Automatically detect drop-offs at checkout and re-engage high-intent shoppers via simulated WhatsApp & SMS recovery nudges with custom 5% conversion vouchers.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-right">
+                <span className="text-[10px] text-slate-400 block font-medium">At-Risk GMV</span>
+                <span className="text-lg font-black text-white">
+                  ₹{abandonedCarts.reduce((acc, c) => acc + c.cartValue, 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="px-4 py-2.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 text-right">
+                <span className="text-[10px] text-cyan-300 block font-medium">Recovery Rate</span>
+                <span className="text-lg font-black text-cyan-400">68.4%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Radar Table */}
+          <div className="rounded-3xl glass-card overflow-hidden border border-slate-800">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Radio className="w-4 h-4 text-cyan-400" />
+                <h4 className="text-sm font-bold text-white">
+                  Live Tracked Carts ({abandonedCarts.length})
+                </h4>
+              </div>
+              <span className="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                Auto-Nudge Coupon: <code className="text-cyan-300 font-bold">RECOVER5</code> (5% Off)
+              </span>
+            </div>
+
+            <div className="divide-y divide-slate-800/80">
+              {abandonedCarts.map((cart) => (
+                <div
+                  key={cart.id}
+                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-800/20 transition-colors"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-11 h-11 rounded-2xl bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 font-mono font-bold text-xs">
+                      {cart.id.split('-')[1]}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm font-bold text-white">
+                          {cart.customerName}
+                        </strong>
+                        <span className="text-[11px] text-slate-400">
+                          ({cart.phone} • {cart.email})
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-300 mt-1 flex items-center gap-2">
+                        <span>Cart: <strong className="text-white">{cart.abandonedItem}</strong></span>
+                        <span className="text-slate-600">•</span>
+                        <span className="text-slate-400">{cart.timeAgo}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between md:justify-end gap-6">
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 block">Cart Total</span>
+                      <strong className="text-base font-black text-white">
+                        ₹{cart.cartValue.toLocaleString('en-IN')}
+                      </strong>
+                    </div>
+
+                    {cart.nudgeSent ? (
+                      <div className="px-3 py-1.5 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Nudge Dispatched</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleSendNudge(cart)}
+                        disabled={sendingNudgeId === cart.id}
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white shadow-lg shadow-cyan-600/20 flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{sendingNudgeId === cart.id ? 'Sending...' : 'Send WhatsApp Nudge'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

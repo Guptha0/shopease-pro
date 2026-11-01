@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 import apiClient from '../api/apiClient';
 import {
   X,
@@ -17,6 +18,8 @@ import {
   Sparkles,
   Send,
   CheckCircle2,
+  Leaf,
+  Users,
 } from 'lucide-react';
 
 const ProductDetailModal = ({
@@ -25,9 +28,12 @@ const ProductDetailModal = ({
   onOpenPriceHistory,
   onOpenPriceLock,
   onOpenNegotiator,
+  onOpenSquadBuy,
+  onOpenEmiCalculator,
 }) => {
   const { addToCart, toggleWishlist, isInWishlist, deliveryPincode } = useCart();
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
 
   const [activeImage, setActiveImage] = useState(product?.imageUrl);
   const [reviews, setReviews] = useState(product?.reviews || []);
@@ -170,34 +176,72 @@ const ProductDetailModal = ({
               </div>
             </div>
 
-            {/* Price Box */}
+            {/* Price Box with Multi-Currency */}
             <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
               <div className="flex items-baseline gap-3">
                 <span className="text-2xl sm:text-3xl font-black text-white">
-                  ₹{product.price.toLocaleString('en-IN')}
+                  {formatPrice(product.price)}
                 </span>
                 <span className="text-sm text-slate-500 line-through">
-                  ₹{mrp.toLocaleString('en-IN')}
+                  {formatPrice(mrp)}
                 </span>
                 <span className="text-xs font-bold text-emerald-400">
-                  Save ₹{savings.toLocaleString('en-IN')} ({Math.round((savings / mrp) * 100)}% OFF)
+                  Save {formatPrice(savings)} ({Math.round((savings / mrp) * 100)}% OFF)
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">Inclusive of all taxes + 1 Year Manufacturer Warranty</p>
             </div>
 
+            {/* Zero-Dark-Pattern Transparency & Price Drop Protection Badges */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900 to-indigo-950/40 border border-emerald-500/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-emerald-300 text-xs">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Zero-Dark-Pattern Transparency Guarantee</span>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  Verified Honest Pricing
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Unlike traditional marketplaces, ShopEase Pro discloses true costs: <strong className="text-white">Fair 8% Seller Margin</strong>, <strong className="text-white">₹0 Hidden Convenience Fees</strong>, and <strong className="text-emerald-300">100% Recyclable Eco-Packaging</strong>.
+              </p>
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
+                <div className="flex items-center gap-1.5 text-indigo-300 font-semibold">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>7-Day Auto Price-Drop Protection</span>
+                </div>
+                <span className="text-slate-400 text-[10px]">Drops within 7 days auto-refund to Wallet</span>
+              </div>
+            </div>
+
             {/* Bank & EMI Offers Box */}
             <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-slate-200">
-                <CreditCard className="w-4 h-4 text-indigo-400" />
-                <span>Available Bank & Card Offers</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-slate-200">
+                  <CreditCard className="w-4 h-4 text-indigo-400" />
+                  <span>Available Bank & Card Offers</span>
+                </div>
+                {onOpenEmiCalculator && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenEmiCalculator(product);
+                    }}
+                    className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1"
+                  >
+                    <span>Compare 0% EMI</span>
+                    <span>→</span>
+                  </button>
+                )}
               </div>
               <ul className="space-y-1.5 text-[11px] text-slate-400 list-disc list-inside">
                 <li>
                   <strong className="text-slate-300">Bank Offer:</strong> 10% Instant Discount up to ₹1,500 on HDFC & SBI Bank Cards.
                 </li>
                 <li>
-                  <strong className="text-slate-300">No Cost EMI:</strong> Available starting from ₹{Math.round(product.price / 12).toLocaleString('en-IN')}/month.
+                  <strong className="text-slate-300">No Cost EMI:</strong> Available starting from {formatPrice(Math.round(product.price / 12))}/month across 3, 6, 9 & 12 months.
                 </li>
                 <li>
                   <strong className="text-slate-300">SmartSense™ Voucher:</strong> Use coupon <code className="text-indigo-300">WELCOME10</code> for an extra 10% off.
@@ -241,17 +285,32 @@ const ProductDetailModal = ({
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-wrap gap-3 pt-2">
               <button
                 onClick={() => {
                   addToCart(product, 1);
                   onClose();
                 }}
-                className="flex-1 py-3.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
+                className="flex-1 min-w-[140px] py-3.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
               >
                 <ShoppingCart className="w-4 h-4" />
                 <span>Add to Cart</span>
               </button>
+
+              {onOpenSquadBuy && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenSquadBuy(product);
+                  }}
+                  className="px-4 py-3.5 rounded-2xl text-xs font-bold bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-pink-300 transition-all flex items-center gap-1.5"
+                  title="Squad Buy with Friends (Save 15%)"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Squad Buy (-15%)</span>
+                </button>
+              )}
 
               <button
                 onClick={() => {

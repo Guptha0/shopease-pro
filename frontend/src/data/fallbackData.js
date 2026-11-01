@@ -376,4 +376,37 @@ export const initialProducts = [
     numReviews: 92,
     badges: ['Lowest Price in 30 Days', 'Prime Same-Day'],
   },
+  {
+    _id: 'prod_13',
+    name: 'Lenovo LOQ 15.6" FHD 144Hz Gaming Laptop (Core i5 13th Gen / RTX 4050 6GB)',
+    brand: 'Lenovo',
+    category: 'Laptops & Gaming',
+    description: 'Intel Core i5-13450HX 10-core CPU, NVIDIA GeForce RTX 4050 6GB GDDR6 (95W TGP), 16GB DDR5 4800MHz RAM, 512GB NVMe SSD, and 100% sRGB 144Hz G-Sync display.',
+    mrp: 86990,
+    price: 67990,
+    stock: 24,
+    imageUrl: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800&auto=format&fit=crop&q=80',
+    gallery: [
+      'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=800&auto=format&fit=crop&q=80'
+    ],
+    specs: {
+      'Processor': 'Intel Core i5-13450HX (10 Cores, Up to 4.6GHz)',
+      'GPU': 'NVIDIA GeForce RTX 4050 6GB GDDR6 (95W TGP)',
+      'Display': '15.6" FHD IPS 144Hz 100% sRGB G-Sync',
+      'RAM / SSD': '16GB DDR5-4800 / 512GB M.2 Gen4 NVMe',
+      'Battery': '60Wh with Rapid Charge Pro (50% in 30m)',
+      'Warranty': '1 Year Onsite + 1 Year Premium Care',
+      'Value Score': '98/100'
+    },
+    priceHistory: [
+      { date: '2026-10-01', price: 74990 },
+      { date: '2026-10-15', price: 69990 },
+      { date: '2026-10-28', price: 67990 }
+    ],
+    isFlashDeal: true,
+    rating: 4.8,
+    numReviews: 148,
+    badges: ['Lowest Price in 30 Days', 'Best Gaming Laptop under ₹70k', 'Prime Same-Day'],
+  },
 ];

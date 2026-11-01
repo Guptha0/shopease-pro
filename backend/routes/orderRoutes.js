@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Wallet = require('../models/Wallet');
 const { protect, adminOnly } = require('../middleware/auth');
 
 // Helper to generate tracking number
@@ -84,6 +85,78 @@ router.post('/', protect, async (req, res) => {
       },
     ];
 
+    // Calculate financials and cashback
+    const numTotal = Number(totalAmount);
+    const coinsRedeemedNum = Number(req.body.coinsRedeemed) || 0;
+    const codFeeNum = (paymentMethod === 'COD') ? (Number(req.body.codFee) || 40) : 0;
+    const coinsEarned = Math.round(numTotal * 0.05); // 5% cashback in coins (1 Coin = ₹1)
+
+    // Handle wallet & loyalty balance
+    let userWallet = await Wallet.findOne({ user: req.user._id });
+    if (!userWallet) {
+      userWallet = new Wallet({
+        user: req.user._id,
+        balance: 0,
+        rewardsCoins: 0,
+      });
+    }
+
+    if (paymentMethod === 'Wallet') {
+      if (userWallet.balance < numTotal) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient wallet balance. Available: ₹${userWallet.balance.toLocaleString('en-IN')}, Required: ₹${numTotal.toLocaleString('en-IN')}`,
+          availableBalance: userWallet.balance,
+          shortfall: numTotal - userWallet.balance,
+        });
+      }
+      userWallet.balance -= numTotal;
+      userWallet.logTransaction({
+        type: 'DEBIT',
+        amount: numTotal,
+        description: `Order Checkout Payment #${trackingNumber}`,
+        referenceId: `ORD-${trackingNumber}`,
+      });
+    }
+
+    // Deduct redeemed coins if any
+    if (coinsRedeemedNum > 0) {
+      userWallet.rewardsCoins = Math.max(0, userWallet.rewardsCoins - coinsRedeemedNum);
+      userWallet.logTransaction({
+        type: 'DEBIT',
+        amount: coinsRedeemedNum,
+        description: `Redeemed ${coinsRedeemedNum} Coins for Cart Discount on #${trackingNumber}`,
+        referenceId: `COIN-RED-${trackingNumber}`,
+      });
+    }
+
+    // Award 5% cashback coins
+    if (coinsEarned > 0) {
+      userWallet.rewardsCoins += coinsEarned;
+      userWallet.logTransaction({
+        type: 'CREDIT',
+        amount: coinsEarned,
+        description: `5% Cashback Reward (${coinsEarned} ShopEase Coins) on #${trackingNumber}`,
+        referenceId: `CB-${trackingNumber}`,
+      });
+    }
+
+    // One-Click Eco-Checkout Bonus (+50 Coins)
+    const isEco = Boolean(req.body.isEcoPackaging);
+    let totalCoinsEarned = coinsEarned;
+    if (isEco) {
+      totalCoinsEarned += 50;
+      userWallet.rewardsCoins += 50;
+      userWallet.logTransaction({
+        type: 'CREDIT',
+        amount: 50,
+        description: `Eco-Checkout Reward (+50 Coins) for Plastic-Free Packaging on #${trackingNumber}`,
+        referenceId: `ECO-${trackingNumber}`,
+      });
+    }
+
+    await userWallet.save();
+
     const order = await Order.create({
       user: req.user._id,
       items,
@@ -96,7 +169,11 @@ router.post('/', protect, async (req, res) => {
       platformFee: platformFee || 5,
       deliveryCharge: deliveryCharge || 0,
       taxAmount: taxAmount || 0,
-      totalAmount: Number(totalAmount),
+      totalAmount: numTotal,
+      coinsRedeemed: coinsRedeemedNum,
+      coinsEarned: totalCoinsEarned,
+      codFee: codFeeNum,
+      isEcoPackaging: isEco,
       orderStatus: 'Order Placed',
       trackingNumber,
       courierPartner: deliverySpeed === 'Prime Same-Day Express' ? 'BlueDart Prime' : 'BlueDart Express',

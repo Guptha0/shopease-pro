@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
+import { useCurrency } from '../context/CurrencyContext';
 import {
   ShoppingCart,
   Star,
@@ -11,6 +12,10 @@ import {
   Scale,
   Zap,
   Sparkles,
+  ShieldCheck,
+  Leaf,
+  Users,
+  CreditCard,
 } from 'lucide-react';
 
 const ProductCard = ({
@@ -19,6 +24,8 @@ const ProductCard = ({
   onOpenPriceHistory,
   onOpenPriceLock,
   onOpenNegotiator,
+  onOpenSquadBuy,
+  onOpenEmiCalculator,
 }) => {
   const {
     addToCart,
@@ -29,6 +36,7 @@ const ProductCard = ({
     isInCompare,
     isPriceLocked,
   } = useCart();
+  const { formatPrice } = useCurrency();
 
   const [addedAnimation, setAddedAnimation] = useState(false);
 
@@ -127,22 +135,63 @@ const ProductCard = ({
             {product.name}
           </h3>
 
-          {/* Pricing Row */}
+          {/* Pricing Row with Multi-Currency */}
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-base sm:text-lg font-black text-white">
-              ₹{product.price.toLocaleString('en-IN')}
+              {formatPrice(product.price)}
             </span>
             <span className="text-xs text-slate-500 line-through">
-              ₹{mrp.toLocaleString('en-IN')}
+              {formatPrice(mrp)}
             </span>
           </div>
 
-          {/* SmartSense™ Price Transparency Badge */}
-          <div className="mt-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950/70 text-indigo-300 border border-indigo-500/30">
-              <TrendingDown className="w-3 h-3 text-emerald-400" />
-              <span>Lowest Price in 30 Days</span>
-            </span>
+          {/* Squad Buy & 0% EMI Quick Action Bar */}
+          <div className="flex items-center gap-1.5 mt-2 text-[10px]">
+            {onOpenSquadBuy && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenSquadBuy(product);
+                }}
+                className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-pink-950/50 hover:bg-pink-900/70 border border-pink-500/40 text-pink-300 hover:text-white transition-all font-semibold shadow-sm"
+                title="Start or Join Squad Buy (15% OFF)"
+              >
+                <Users className="w-3 h-3 text-pink-400 shrink-0" />
+                <span>Squad -15%</span>
+              </button>
+            )}
+            {onOpenEmiCalculator && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenEmiCalculator(product);
+                }}
+                className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-blue-950/50 hover:bg-blue-900/70 border border-blue-500/40 text-blue-300 hover:text-white transition-all font-semibold shadow-sm"
+                title="0% No Cost EMI Calculator"
+              >
+                <CreditCard className="w-3 h-3 text-blue-400 shrink-0" />
+                <span>0% EMI</span>
+              </button>
+            )}
+          </div>
+
+          {/* Zero-Dark-Pattern Transparency & Price Drop Protection Badges */}
+          <div className="mt-2.5 p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/20 text-[10px] space-y-1">
+            <div className="flex items-center gap-1 font-bold text-emerald-300">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Zero Dark Patterns: 8% Margin • ₹0 Hidden Fees</span>
+            </div>
+            <div className="flex items-center justify-between text-[9px] pt-0.5 border-t border-emerald-500/10">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <Leaf className="w-2.5 h-2.5" />
+                <span>Plastic-Free Box</span>
+              </span>
+              <span className="text-indigo-300 font-semibold">
+                🛡️ 7D Price-Drop Refund
+              </span>
+            </div>
           </div>
         </div>
 

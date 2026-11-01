@@ -1,8 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useCurrency } from '../context/CurrencyContext';
+import { useWallet } from '../context/WalletContext';
+import { useNotifications } from '../context/NotificationContext';
 import {
   ShoppingBag,
+  Camera,
+  Globe,
+  Gift,
+  Users,
   ShoppingCart,
   Search,
   MapPin,
@@ -15,9 +22,14 @@ import {
   ChevronDown,
   Sparkles,
   X,
+  Wallet,
+  Bell,
 } from 'lucide-react';
 
 const Navbar = ({
+  onOpenVisualSearch,
+  onOpenGiftCards,
+  onOpenSquadBuy,
   currentView,
   setCurrentView,
   setIsCartOpen,
@@ -29,8 +41,12 @@ const Navbar = ({
 }) => {
   const { user, isAdmin, logout } = useAuth();
   const { totalItemsCount, wishlist, compareList, deliveryPincode } = useCart();
+  const { balance, rewardsCoins } = useWallet();
+  const { unreadCount } = useNotifications();
 
   const [suggestOpen, setSuggestOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const { currency, setCurrency, currencies, activeCurrency } = useCurrency();
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const searchRef = useRef(null);
 
@@ -120,14 +136,26 @@ const Navbar = ({
                 }}
                 className="w-full pl-10 pr-9 py-2.5 text-xs rounded-xl bg-slate-900/90 border border-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 placeholder-slate-500 transition-all shadow-inner"
               />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="text-slate-400 hover:text-white p-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {onOpenVisualSearch && (
+                  <button
+                    type="button"
+                    onClick={onOpenVisualSearch}
+                    className="p-1 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors"
+                    title="AI Snap & Search (Visual Image Search)"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Auto-suggest dropdown menu */}
@@ -169,6 +197,47 @@ const Navbar = ({
 
           {/* Action Icons */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Digital Wallet Balance Pill */}
+            <button
+              onClick={() => setCurrentView('wallet')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs ${
+                currentView === 'wallet'
+                  ? 'bg-indigo-600/30 border-indigo-500 text-white shadow-md shadow-indigo-600/20'
+                  : 'bg-slate-900 border-slate-800 hover:border-indigo-500/40 text-slate-200'
+              }`}
+              title="ShopEase Pro Digital Wallet"
+            >
+              <div className="w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                <Wallet className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex items-center gap-1.5 font-bold">
+                <span className="text-white font-mono text-xs">
+                  ₹{Number(balance).toLocaleString('en-IN')}
+                </span>
+                <span className="hidden md:inline-flex items-center gap-0.5 text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded font-mono">
+                  🪙{rewardsCoins}
+                </span>
+              </div>
+            </button>
+
+            {/* Notification Bell */}
+            <button
+              onClick={() => setCurrentView('notifications')}
+              className={`relative p-2.5 rounded-xl border transition-all ${
+                currentView === 'notifications'
+                  ? 'bg-indigo-600/30 border-indigo-500 text-white'
+                  : 'bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white'
+              }`}
+              title="SMS & WhatsApp Alerts"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md shadow-rose-500/40 animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
             {/* Wishlist */}
             <button
               onClick={() => setCurrentView('store')}
@@ -238,6 +307,30 @@ const Navbar = ({
 
                     <button
                       onClick={() => {
+                        setCurrentView('account');
+                        setUserDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl bg-indigo-600/15 hover:bg-indigo-600/30 text-indigo-300 font-bold text-left"
+                    >
+                      <User className="w-4 h-4 text-indigo-400" />
+                      <span>My Account Hub</span>
+                    </button>
+
+                    {onOpenSquadBuy && (
+                      <button
+                        onClick={() => {
+                          onOpenSquadBuy();
+                          setUserDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-800 text-purple-300 text-left"
+                      >
+                        <Users className="w-4 h-4 text-purple-400" />
+                        <span>Squad Buy (15% Off)</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
                         setCurrentView('orders');
                         setUserDropdownOpen(false);
                       }}
@@ -245,6 +338,28 @@ const Navbar = ({
                     >
                       <Package className="w-4 h-4 text-indigo-400" />
                       <span>My Orders & Tracking</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setCurrentView('wallet');
+                        setUserDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-800 text-slate-300 text-left"
+                    >
+                      <Wallet className="w-4 h-4 text-indigo-400" />
+                      <span>Digital Wallet & Passbook</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setCurrentView('notifications');
+                        setUserDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-800 text-slate-300 text-left"
+                    >
+                      <Bell className="w-4 h-4 text-amber-400" />
+                      <span>Alerts & Notifications {unreadCount > 0 && `(${unreadCount})`}</span>
                     </button>
 
                     {isAdmin && (
